@@ -1,0 +1,55 @@
+https://docs.opencv.org/4.x/d7/d4d/tutorial_py_thresholding.html
+
+__Libraries__
+
+    -> OpenCV
+        - EAST text detector
+
+        - 
+
+    -> Tesseract OCR Engine
+        - works well under controlled conditions
+        - performs poorly if noise is present
+        - utilizes Long Short-Term Memory network
+
+
+__OpenCV General Procedure__
+    
+    1) Apply image processing
+        - convert RGB to greyscale
+        - thresholding methods:
+            - simple thresholding
+                - binary thresholding
+                - uses a global value
+
+            - adaptive thresholding
+                - gives better results for images w/ varying lighting
+                - determines threshold for pixel based on small region around it
+                - options:
+                    - mean
+                    - gaussian weighted sum
+
+            - Otsu's binarization
+                - determines theshold value from image histogram
+        - gaussian filter
+
+    2) Structuring
+        - look for shape of text structure
+            - rectangular, elliptical, circular, etc
+        - apply dilation to text blocks
+
+    3) Find Contours
+        - find countours in dilated image
+        - get a list of all contours in image
+            - Numpy array of (x,y) coordinates of boundary points in object
+        - used to find white objects from black background
+        - saved in a text file
+
+    4) Apply OCR
+        - loop through each contour
+            - take x and y coordinates and width and height of each
+        - draw rectangle in image using obtained coordinates
+        - crop the rectangular region
+        - pass to OCR engine 
+            - OCR engine will append result to a text file
+

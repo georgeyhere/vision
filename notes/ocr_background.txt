@@ -1,0 +1,95 @@
+
+__Optical Character Recognition__
+    
+    -> Types:
+        - Optical Character Recognition
+            - targets text; one character at a time
+
+        - Optical Word Recognition
+            - targets text; one word at a time 
+            - looks for spaces as word divider
+
+        - Intelligent Character Recognition
+            - targets handwritten text; one character at a time
+            - usually involves machine learning
+
+        - Intelligent Word Recognition
+            - targets handwritten text; one word at a time
+
+    -> Factors:
+        - Text density
+        - Text structure
+        - Fonts
+        - Character type (language)
+        - Artifacts
+        - Location
+
+__Techniques__
+    
+    -> Preprocessing
+
+        - De-skew
+            - realigns document for scanning alignment
+            - make text perfectly horizontal or vertical
+
+        - Despeckle
+            - remove positive and negative spots
+            - smooth edges
+
+        - Binarisation
+            - convert image from color/greyscale to binary
+            - used to separate text from background
+            - has significant effect on quality of character recognition
+            - method depends on type of input image
+
+        - Layout analysis
+            - identify columns, paragraphs, captions, etc
+
+        - Character isolation
+            - necessary for per-character OCR
+            - break up connected characters
+            - connect broken single characters
+            
+        - Normalization
+            - normalize aspect ratio and scale
+
+
+    -> Text Recognition
+
+        - Matrix matching
+            - compare an image to a reference 
+                - pixel by pixel basis
+            - aka:
+                - pattern matching
+                - pattern recognition
+                - image correlation
+            - relies on input glyphs being isolated from rest of image
+            - reference needs to be similar font and at same scale
+
+        - Feature extraction
+            - decompose glyphs into features
+                - lines
+                - closed loops
+                - line intersections
+            - makes recognition process more computationally efficient
+            - general CV feature detection applicable to this method
+            - uses Nearest Neighbor Classifiers to compare features
+                - k-nearest neighbors algorithm
+
+
+__Post-processing__
+    
+    -> Constraints
+        - constrain outputs by a list of allowed words
+        - e.g. all English words
+
+    -> Levenshtein Distance algorithm
+
+
+__Existing Solutions__
+    
+    -> Cuneiform/Tesseract
+        - use two-pass approach for adaptive recognition
+
+    -> OCRopus/Tesseract
+        - use neural networks to recognize whole lines of text

@@ -1,0 +1,21 @@
+
+https://www.researchgate.net/publication/261202268_A_discriminative_linear_regression_approach_to_OCR_adaptation
+
+__Machine Learning__
+
+    -> Deep Learning and Machine Learning Text Recognition
+
+        - Long Short-Term Memory (LSTM)
+
+        - Gated Recurrent Unit (GRU)
+
+        - Natural Language Processing (NLP)
+
+
+__AI__
+    
+    -> Convolutional Neural Network (CNN)
+        - requires text localization and character segmentation
+
+__Linear Regression__
+    
