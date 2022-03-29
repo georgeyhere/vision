@@ -1,16 +1,26 @@
 # https://stackoverflow.com/questions/63195577/how-to-locate-qr-code-in-large-image-to-improve-decoding-performance
 #
+# This is a set a functions to:
+#   - configure a capture object
+#   - capture a frame
+#   - perform preprocessing
+#   - detect QR codes in frame
+#
 import cv2
 import numpy as np
 import sys 
 import time
+import pyzbar
 #
-# Sanity Check
-print("QR Scanner initialized.")
 
+# 
+def printInfo():
+    print('OpenCV Version', cv2.__version__)
+    print("QR Scanner initialized.")
 
 # Utility function to get a video frame from webcam.
-# @param: cap is a cv2.videoCapture object.
+# @param:  cap is a cv2.videoCapture object.
+# @return: The captured frame.
 def captureFrame(cap):
     ret, frame = cap.read()
     if ret == False:
@@ -18,6 +28,8 @@ def captureFrame(cap):
     return frame
 
 # Utility function to perform preprocessing (blur + thresholding)
+# @param:  img is a frame to perform preprocessing on.
+# @return: The preprocessed frame.
 def preProcess(img):
     img = cv2.medianBlur(img, 3)
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -28,54 +40,45 @@ def preProcess(img):
                                  151, 
                                  10)
     
-
-# Utility function to draw bounding box on frame.
-def display(img, bbox):
-    n = len(bbox)
+# Function to display frame and bbox
+# @param:  img is a frame barcodes were detected in.
+# @param:  barcodes are barcode objects returned by pyzbar.
+# @return: Barcode encoded data.
+def decodeAndDisplay(img, barcodes):
+    # iterate through detected barcodes:
+    for barcode in barcodes:
+        # draw bbox
+        (x,y,w,h) = barcode.rect
+        cv2.rectangle(img, (x,y), (x+w, y+h), (0,0,255), 2)
+        
+        # draw decoded data on image
+        barcodeData = barcode.data.decode("utf-8")
+        barcodeType = barcode.type
+        labelText = "{} {{}}".format(barcodeData, barcodeType)
+        cv2.putText(img, labelText, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5, (0,0,255), 2)
     
-    for j in range(n):
-        cv2.line(img, 
-                 tuple(bbox[j][0]), 
-                 tuple(bbox[ (j+1) % n][0]), 
-                 (255,0,0), 
-                 3)
-        cv2.imshow("Video", img)
+    # display frame
+    cv2.imshow("Video", img)
+    return barcodeData;
     
 # Function to detect QR code in an input image
-def qrDetect(inputImage):
-    qrDecoder = cv2.QRCodeDetector()
-
-    # Look for a qr code.    
-    t = time.time()
-    data, bbox, rectifiedImage = qrDecoder.detectAndDecode(inputImage)
-    print("Time Taken for Detect and Decode : {:.3f} seconds.".format(time.time() - t))
-    
-    # Print and return applicable outputs.
-    if len(data) > 0:
-        data = format(data)
-        return 1, inputImage, bbox, data
-    else:
-        return 0, inputImage, 0, 0
-
+def qrDetect(img):
+    # detect barcodes in input image
+    barcodes = pyzbar.decode(img)
+    return barcodes
 
 # Main function.  
 def main():
-    print("I'm alive!")
+    printInfo();
     
     # Stream webcam frames until 'q' is pressed.
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW) 
     while True:
         frame = captureFrame(cap)
         frame = preProcess(frame)
-        ret, img, bbox, data = qrDetect(frame)
-        
-        if ret:
-            # display(img, bbox) # breaks app
-            cv2.imshow("Video", img) # works but no bbox
-            print("Decoded Data : ", data)
-        else:
-            cv2.imshow("Video", img)
-            print("QR Code not detected")
+        barcodes = qrDetect(frame)
+        frame, barcodeData = decodeAndDisplay(frame, barcodes)
         
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
