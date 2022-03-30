@@ -6,6 +6,7 @@
 #   - perform preprocessing
 #   - detect QR codes in frame
 #
+from cProfile import label
 import string
 from tokenize import String
 import cv2
@@ -13,17 +14,20 @@ import numpy as np
 import sys 
 import time
 import pyzbar.pyzbar as pyzbar
+import pandas as pd
+
+
 #
 
 # 
-def printInfo():
+def print_info():
     print('OpenCV Version', cv2.__version__)
     print("QR Scanner initialized.")
 
 # Utility function to get a video frame from webcam.
 # @param:  cap is a cv2.videoCapture object.
 # @return: The captured frame.
-def captureFrame(cap):
+def capture_frame(cap):
     ret, frame = cap.read()
     if ret == False:
         print("Capture failed.")
@@ -32,7 +36,7 @@ def captureFrame(cap):
 # Utility function to perform preprocessing (blur + thresholding)
 # @param:  img is a frame to perform preprocessing on.
 # @return: The preprocessed frame.
-def preProcess(img):
+def pre_process(img):
     img = cv2.medianBlur(img, 3)
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     return cv2.adaptiveThreshold(img_gray, 
@@ -50,13 +54,27 @@ def preProcess(img):
 # @return: centerId is the ID of the detected barcode, starting from 0
 # @return: centerPts is the center point of the detected barcode (x,y)
 # @return: centerDat is the data encoded in the barcode.
-def decodeAndDraw(img, barcodes):
-    centerId  = np.empty(shape=(16))
+def decode_and_draw(img, barcodes, cap):
+    centerId  = [None] * 16
     centerPts = np.empty(shape=(16,16))
     centerDat = [String] * 16
     
+    #print("Number of detected barcodes: ", len(barcodes))
+    # get capture res
+    x_res = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    y_res = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    
+    # reference coordinate
+    x_ref = int(x_res/2)
+    y_ref = int(y_res/2)
+    refCoord = (x_ref, y_ref)
+    
+    # draw circle at ref
+    # draw circle at center of qr
+    cv2.circle(img, (x_ref, y_ref), 3, (0,255,0), 3)
+    
     # iterate through detected barcodes:
-    i = 0
+    i = int(0)
     for barcode in barcodes:
         # draw bbox
         (x,y,w,h) = barcode.rect
@@ -68,72 +86,54 @@ def decodeAndDraw(img, barcodes):
         
         # put barcode data
         dataLabel = "{} {}".format(barcodeData, barcodeType)
-        cv2.putText(img, dataLabel, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX,
+        cv2.putText(img, dataLabel, (x, y - 10), cv2.FONT_HERSHEY_COMPLEX ,
                     0.5, (0,0,255), 2)
         
         # draw circle at center of qr
         centerCoord = (int(x+w/2), int(y+h/2))
-        cv2.circle(img, centerCoord, 3, (0,0,255), 3)
+        cv2.circle(img, centerCoord, 1, (0,0,255), 1)
         
         # put center coordinates
         coordLabel = "{}, {}".format(centerCoord[0], centerCoord[1])
-        cv2.putText(img, coordLabel, (centerCoord[0]+8, centerCoord[1]), cv2.FONT_HERSHEY_SIMPLEX,
+        cv2.putText(img, coordLabel, (centerCoord[0]+8, centerCoord[1]), cv2.FONT_HERSHEY_COMPLEX ,
                     0.5, (0,0,255), 2)
         
-        #
+        # get offset values
+        offset_x = x_ref - centerCoord[0]
+        offset_y = y_ref - centerCoord[1]
         
-        np.append(centerId, i)
+        # put offset values
+        offsetLabel = "{}, {}".format(offset_x, offset_y)
+        cv2.putText(img, offsetLabel, (centerCoord[0]+8, centerCoord[1]+15), cv2.FONT_HERSHEY_COMPLEX ,
+                    0.5, (255,0,0), 2)
+        
+        # draw line from center of qr to reference
+        cv2.line(img, centerCoord, refCoord, (255,0,0), 1)
+        
+        centerId[i] = i
         np.append(centerPts, centerCoord)
         np.append(centerDat, barcodeData)
         i = i+1
         
     return img, centerId, centerPts, centerDat
-
-# Function to compare detected QR code locations against a predefined reference.
-def posCompare(img, cap, centerIds, centerPts):
-    offSets = np.empty(shape=(16))
-    
-    # get capture res
-    x_res = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    y_res = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    
-    # demo ref is center of frame
-    refCoord = (x_res/2, y_res/2)
-    
-    print(centerIds)
-    print(centerPts)
-    
-    i=0
-    for centerId in centerIds:
-        codeId = int(centerId[i])
-        offSets = (x_res-int(centerPts[codeId][0]), y_res-int(centerPts[codeId][1]) )
-
-        # annote onto frame
-        coordLabel = "Delta: {}, {}".format(offSets[0], offSets[1])
-        cv2.putText(img, coordLabel, (int(centerPts[codeId][0])+8, int(centerPts[codeId][1])+8), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5, (0,0,255), 2)
-        i = i+1
-        
-    return img, offSets
     
 # Function to detect QR code in an input image
-def qrDetect(img):
+def qr_detect(img):
     # detect barcodes in input image
     barcodes = pyzbar.decode(img)
     return barcodes
 
 # Main function.  
 def main():
-    printInfo();
+    print_info()
     
     # Stream webcam frames until 'q' is pressed.
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW) 
     while True:
-        frame = captureFrame(cap)
-        prepFrame = preProcess(frame)
-        barcodes = qrDetect(prepFrame)
-        frame, centerIds, centerPts, codeData = decodeAndDraw(frame, barcodes)
-        frame, codeOffsets = posCompare(frame, cap, centerIds, centerPts)
+        frame = capture_frame(cap)
+        prepFrame = pre_process(frame)
+        barcodes = qr_detect(prepFrame)
+        frame, centerIds, centerPts, codeData = decode_and_draw(frame, barcodes, cap)
         
         cv2.imshow("Video", frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
